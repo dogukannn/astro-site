@@ -21,6 +21,10 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   site: 'https://dogukannn.github.io/astro-site',
   base: '/astro-site',
+  build: {
+    format: 'directory',
+  },
+  trailingSlash: 'always',
   integrations: [
     expressiveCode({
       themes: ['github-light', 'github-dark'],
@@ -71,6 +75,7 @@ export default defineConfig({
     icon(),
   ],
   vite: {
+    base: '/astro-site/',
     plugins: [tailwindcss()],
   },
   server: {
