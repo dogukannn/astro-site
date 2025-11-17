@@ -24,7 +24,6 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
-  trailingSlash: 'always',
   integrations: [
     expressiveCode({
       themes: ['github-light', 'github-dark'],
