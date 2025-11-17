@@ -10,7 +10,9 @@
     "preview": "astro preview",
     "astro": "astro",
     "prettier": "prettier --write **/*.{ts,tsx,css,astro} --ignore-path .gitignore",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+	"deploy": "gh-pages -d dist"
+
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
@@ -45,6 +47,7 @@
     "typescript": "^5.8.3"
   },
   "devDependencies": {
+    "gh-pages": "^6.3.0",
     "prettier": "^3.5.1",
     "prettier-plugin-astro": "^0.14.1",
     "prettier-plugin-astro-organize-imports": "^0.4.11",
