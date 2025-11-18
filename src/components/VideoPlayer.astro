@@ -1,0 +1,11 @@
+---
+const { src, className = "" } = Astro.props;
+const base = import.meta.env.BASE_URL;  // e.g. "/" or "/astro-site/"
+---
+
+<div class={`flex justify-center [&:not(:last-child)]:mb-10 ${className}`}>
+  <video controls class="max-w-full rounded-lg">
+    <source src={`${base}/${src.replace(/^\//, "")}`} type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+</div>
