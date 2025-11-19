@@ -19,6 +19,8 @@ export async function getStaticPaths({
 
 const { page } = Astro.props
 
+const base = (Astro.site?.pathname ?? '').replace(/\/$/, '')
+
 const postsByYear = groupPostsByYear(page.data)
 const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
 ---
@@ -52,7 +54,7 @@ const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
   <PaginationComponent
     currentPage={page.currentPage}
     totalPages={page.lastPage}
-    baseUrl="/blog/"
+	  baseUrl=`${base}/blog/`
     client:load
   />
 </Layout>

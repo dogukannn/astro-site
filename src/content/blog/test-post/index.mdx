@@ -14,7 +14,7 @@ import VideoPlayer from "@/components/VideoPlayer.astro";
 
 With our CPU ray tracer in our hand, we can handle multiple materials and create some beautiful images. However, the process is slow, and we can optimize many things in our code. In this post, we will optimize our ray tracer with acceleration structures, tiled multithreading and some linearization.
 
-# Bounding Volume Hierarchy
+## Bounding Volume Hierarchy
 
 In our ray tracer, we need to check every object in the scene to find the closest intersection point. This process is slow, especially when we have many objects, like millions of triangles, in the scene. To speed up this process, we can use a Bounding Volume Hierarchy (BVH) structure. BVH is a tree structure that divides the scene into volumes and stores the objects in these volumes. With this structure, we can check the intersection with the volumes first, and if the ray intersects with the volume, we can check the objects in that volume. This way, we can reduce the number of intersection checks and speed up the process.
 
@@ -36,11 +36,7 @@ After creating the BVH structure, I needed to build the BVH. To build the BVH, a
 
 And voila, I have a BVH structure that can handle the scene with millions of triangles. For testing, I used the Dragon model which has 869928 triangles, and the BVH structure handled it like a charm.
 
-<Figure caption="Dragon model with BVH structure rendered in 789ms first">
-![Dragon model with BVH structure rendered in 789mshola](./assets/chinese_dragon_noisy_old_threading_789.png)
-</Figure>
-
-<Figure caption="Dragon model with BVH structure rendered in 789ms second">
+<Figure caption="Dragon model with BVH structure rendered in 789ms">
 ![Dragon model with BVH structure rendered in 789mshola](./assets/chinese_dragon_noisy_old_threading_789.png)
 </Figure>
 
@@ -52,13 +48,8 @@ However, while implementing the BVH structure, I realized that there are some bl
 ![Dragon model without artifacts in 730mshola](./assets/chinese_dragon_no_noise.png)
 </Figure>
 
-# Tiled Multithreading
 
-There is an indeed huge speedup with the BVH structure, however, we can still optimize the process. In the previous post, I mentioned that I used a simple multithreading approach. While examining the code, I realized that I spawned a thread for each pixel (I used std::future and async, and I believe behind the scenes It doesn't use a thread pool).
-To fix this issue, I implemented a basic thread pool, in which each thread gets the jobs from a job queue until there is no job left in the queue. Which ensures that no thread is waiting for a job after finishing the previous one, if we enqueue jobs fast enough. While doing the pooled multithreading, I also implemented a tiled multithreading approach. In this approach, I divided the image into 32x32 tiles, and enqueued each tile as a job into the pool. While testing the structure I came across a deadlock which prevented the threads getting new jobs as they are not notified when a job is available if we wait all the threads to finish. I solved this issue by adding a second conditional variable. The results were satisfying, for the dragon model I can render the scene in 60ms, which is a huge improvement in addition to the BVH structure. In the end, we decreased the render time from 15-20 mins to 60ms.
-The job loop for the thread pool is below:
-
-# Tiled Multithreading
+## Tiled Multithreading
 
 There is an indeed huge speedup with the BVH structure, however, we can still optimize the process. In the previous post, I mentioned that I used a simple multithreading approach. While examining the code, I realized that I spawned a thread for each pixel (I used std::future and async, and I believe behind the scenes It doesn't use a thread pool).
 To fix this issue, I implemented a basic thread pool, in which each thread gets the jobs from a job queue until there is no job left in the queue. Which ensures that no thread is waiting for a job after finishing the previous one, if we enqueue jobs fast enough. While doing the pooled multithreading, I also implemented a tiled multithreading approach. In this approach, I divided the image into 32x32 tiles, and enqueued each tile as a job into the pool. While testing the structure I came across a deadlock which prevented the threads getting new jobs as they are not notified when a job is available if we wait all the threads to finish. I solved this issue by adding a second conditional variable. The results were satisfying, for the dragon model I can render the scene in 60ms, which is a huge improvement in addition to the BVH structure. In the end, we decreased the render time from 15-20 mins to 60ms.
@@ -98,7 +89,7 @@ The job loop for the thread pool is below:
     }
 ```
 
-# Instancing and Transformations
+## Instancing and Transformations
 
 If we have a fast ray tracer with a BVH structure, we can push the limits and have multiple of these huge models. And in fact, if we want to have multiple of the same model, we can cut from the memory cost by using instancing. We can just store each base model once in our memory and after that we can just reference the base model for other instances. However, to have meaningful renders, we need to move them around, rotate them, and scale them. To do this, we can implment transformations and apply them to the instances. For the transformations, I implemented a 4x4 matrix structure and converted each transformation into the matrix equivalent. 
 
@@ -153,7 +144,7 @@ While implementing the transformations, I realized that the normals are not tran
 </Figure>
 
 
-# Back to the BVH, is a better split possible?
+## Back to the BVH, is a better split possible?
 
 While testing the BVH structure, some scenes, didn't render as fast as I expected. While experimenting with some stuff on the code, I noticed that some leaf nodes didn't split any triangles, and have all the triangles in one child which can have like 240 triangles which is bad. To solve this issue I tried to split the triangles equally, for each axis, I tried different split points and calculated the cost of the split. I used a very basic cost function, which is the count difference between the nodes after we split them. Then I used the minimun cost split point for the split. This approach worked well, and the render times decreased for some meshes. However, for some meshes like the dragon model, the render time increased. I believe this is the result of my cost functions, it can work well for meshes with longer triangles, however bad for meshes with shorter and smaller triangles. I am not exactly sure this is the cause, it is just a guess and needs further investigation.
 
@@ -163,7 +154,7 @@ For the windmill scene, it worked well, and the render time decreased from 1080m
 ![Windmill scene rendered with a better split in 484ms, 2x faster than the basic split method](./assets/windmill_smooth.png)
 </Figure>
 
-# Too Many BVHs, Time For a BVH of BVHs Also Known As Top Level Acceleration Structures
+## Too Many BVHs, Time For a BVH of BVHs Also Known As Top Level Acceleration Structures
 
 In the previous windmill scene, there are 20 meshes to render, and each mesh has its own BVH structure. And our rays won't intersect with many of them, in this case we don't have many meshes, but we still can reduce the number of intersection checks. To do this, we can create a top-level BVH structure, which holds the BVH structures of the meshes. We can check the intersection with the top-level BVH first, then with the BVH structures of the meshes. However, there is a catch, we need to transform the bounding boxes of these BVH structures with respect to their model matrices and move them into the word space to correctly build the top level BVH structure. I used the same building method and split function to build the top-level BVH structure, the main difference is that leaf nodes hold the BVH structures of the meshes.
 
@@ -173,7 +164,7 @@ The results for the windmill scene were satisfying, the render time decreased fr
 ![Windmill scene rendered with a TLAS BVH in 419ms](./assets/windmill_smooth.png)
 </Figure>
 
-# Timings with Different Approaches
+## Timings with Different Approaches
 
 Scene | Half Split BVH Tiled MP | Experimental Split BVH Tiled MP | Half Split TLAS BVH Tiled MP | Experimental Split TLAS BVH Tiled MP | Experimental Split BVH Basic MP
 --- | --- | --- | --- | --- | ---
@@ -193,7 +184,7 @@ Windmill           | 1158ms    | 483ms   | 961ms   | 444ms    | 1034ms
 Grass Desert       | 6930ms    | 7886ms  | 7330ms  | 8512ms   | 10097ms
 
 
-# Result Images and Videos
+## Result Images and Videos
 
 The results of transformed lights, transformed cameras, transformed and instanced models can be seen below as images and videos.
 
@@ -261,7 +252,7 @@ The results of transformed lights, transformed cameras, transformed and instance
   ![Windmill](./assets/tests/windmill_000.png)
 </Figure>
 
-# References
+## References
 
 “Jacco Bikker,. How to build a BVH.” https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics
 
