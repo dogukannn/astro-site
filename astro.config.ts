@@ -74,7 +74,6 @@ export default defineConfig({
     icon(),
   ],
   vite: {
-    base: '/astro-site/',
     plugins: [tailwindcss()],
   },
   server: {
