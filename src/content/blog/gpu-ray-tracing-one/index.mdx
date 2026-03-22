@@ -16,7 +16,7 @@ For the code and the project files, you can check [my repository on GitHub](http
 
 Results are shown at the end of the post.
 
-# Initial Setup
+## Initial Setup
 
 For the initial setup I searched for some DXR examples online and found the [Microsoft's DXR samples](https://learn.microsoft.com/en-us/samples/microsoft/directx-graphics-samples/d3d12-raytracing-samples-win32/), which was a good enough starting point. I picked the basic lighting sample with a cube and a light source. 
 
@@ -31,7 +31,7 @@ ThrowIfFailed(device->QueryInterface(IID_PPV_ARGS(&m_dxrDevice)), L"Couldn't get
 
 After creating the device we can start defining our shaders.
 
-# Defining Shaders
+## Defining Shaders
 
 For a raytracing pipeline, we can define 4 new types of shaders: ray generation, closest hit, any hit and miss shaders. However, in this example we won't use any hit shaders, even though they are useful for things like shadow rays, my implementation with closest hit shaders will be easier to understand for the beginning. We can define these shaders as below for a starting point. We will use these shaders to create our pipeline and after that we will fill them with the necessary code.
 
@@ -53,7 +53,7 @@ void MyMissShader(inout RayPayload payload)
 }
 ```
 
-# Creating the Pipeline
+## Creating the Pipeline
 
 In the raytracing pipeline, unlike the classical pipelines, we have subobjects to define the shaders and the shader binding tables. These are useful for creating a more flexible pipeline, because we don't need to declare every shader or every field to make raytracing pipeline start working. We can get help from DirectX12 helper library (d3dx12.h) to create our pipeline. After creating the pipeline, we will create a library to hold our shaders references which we can use later for the shader binding table.
 
@@ -101,7 +101,7 @@ ThrowIfFailed(m_dxrDevice->CreateStateObject(raytracingPipeline, IID_PPV_ARGS(&m
 
 A note about the maximum recursion depth is that this value is the absolute maximum value that you can call the TraceRay() function, and the shaders won't stop the recursion for you at this depth, you need to handle this in your shaders. If you don't handle this, you will get a hanged GPU, which results in a device lost error.
 
-## Calculating Shader Offset For Each Intersected Object
+### Calculating Shader Offset For Each Intersected Object
 
 As you see we defined every shader that we will use in one pipeline and we will use this pipeline for every object in the scene. The reason behind it is that in ray tracing we won't issue any draw calls for the objects, we will just dispatch rays to the scene and every intersection needs to call the related shader. This calculation is handled by our application and we can define it from multiple locationn, geometry datas for bottom level acceleration structures, instance datas for top level acceleration structures, and as a parameter of the TraceRay() function.
 
@@ -117,7 +117,7 @@ This calculation is done by the DXR API, and quite hard to figure out by yoursel
 ![shader binding table](./assets/sbt_offset.png)
 </Figure>
 
-# Creating Acceleration Structures
+## Creating Acceleration Structures
 
 Creating the acceleration structures is a straightforward process, we need to create the bottom level acceleration structures for the geometries in the scene, and the top level acceleration structures for the instances in the scene. 
 
@@ -237,11 +237,11 @@ m_deviceResources->ExecuteCommandList();
 m_deviceResources->WaitForGpu();
 ```
 
-## Multi Mesh Bottom Level Structures
+### Multi Mesh Bottom Level Structures
 
 In the above code, I created a bottom level acceleration structure for each mesh in the scene, and a top level acceleration structure for each instance in the scene. This is a good starting point for a simple scene, but for a more complex scene, we can group multiple geometries in a single bottom level acceleration structure. This will reduce the memory cost of the acceleration structures, and the build time of the structures, and if we are sure that these meshes will near each other in the scene, we can reduce the number of intersection tests for the rays.
 
-# Passing Data to the GPU
+## Passing Data to the GPU
 
 After creating our pipeline and acceleration structures, we need to pass the necessary material data and instance datas to the GPU. I used a unbounded ByteAddressBuffer for the instance data, and we can load the structure from the HLSL with the instanceID.
 
@@ -270,7 +270,7 @@ struct InstanceData
 ByteAddressBuffer InstanceDatas : register(t3, space0);
 ```
 
-## HLSL Buffer Alignment Issues With Arrays
+### HLSL Buffer Alignment Issues With Arrays
 
 For the scene data, I used constant buffers, and I encountered a problem with the alignment of the arrays in the constant buffer. I created a predefined maximum sized index array for the indices of the emissive meshes (this will help us to sample from them in the Next Event Estimation). However, when I run the code I noticed some errors with the indices.
 
@@ -306,11 +306,11 @@ As a solution I packed the uint's into uint4 for HLSL and accessed with offsets 
 #endif
 ```
 
-## Local and Global Root Arguments
+### Local and Global Root Arguments
 
 In the ray tracing pipeline, we can define two types of root arguments, local and global. Local root arguments are the data that will be passed to the shaders for each intersection, and global root arguments are the data that will be shared across the shaders. In this example I didn't use the local root arguments, but I used the global root arguments for the scene data and the instance data, defining the root arguments are the same process as without DXR, so I will skip this part.
 
-# Ray Generation
+## Ray Generation
 
 To start the ray tracing process, we need to call DispatchRays() function with the ray generation shader index. This function will start the ray tracing process and call the ray generation shader for each pixel in the screen. In the ray generation shader, we need to define the ray direction and origin, and call the TraceRay() function to start the ray tracing process.
 
@@ -405,7 +405,7 @@ inline void GenerateCameraRay(uint2 index, float2 sampleOffset, out float3 origi
     direction = normalize(world.xyz - origin);
 }
 ```
-# Issues With Random Float Generation and Hash Functions
+## Issues With Random Float Generation and Hash Functions
 
 While sampling from the pixels, I need to uniformly sample the directions of the rays from inside the pixel, however in the GPU we don't have a random number generator, so we can use hashing functions to generate random numbers, I found some shaders online, however to improve the randomness of the numbers, in each frame I generated 4 random floats in CPU and passed them to the GPU, and used these random numbers for the sampling, this helped me to get rid of the aliasing issues in the image.
 
@@ -419,7 +419,7 @@ float2 random2D(float3 seed) {
 }
 ```
 
-# Closest Hit Shaders
+## Closest Hit Shaders
 
 I will introduce the closest hit shaders for the diffuse one step by step with some optimization techniques I used in the CPU version of the path tracer.
 
@@ -518,7 +518,7 @@ void MyClosestHitShader(inout RayPayload payload, in MyAttributes attr)
 }
 ```
 
-## Importance Sampling
+### Importance Sampling
 
 To sample the directions of the rays, we can use importance sampling, which will help us to sample the directions of the rays with the probability of the directions. In the above code, I used the cosine weighted hemisphere sampling for the diffuse materials. 
 
@@ -554,7 +554,7 @@ float3 randomInHemisphere(float3 normal, float3 seed) {
 }
 ```
 
-## Shadow Ray Hack
+### Shadow Ray Hack
 
 For shadow rays, I used the color values and a uint value to determine a shadow ray in the RayPayload to determine the shadow rays. This is a hacky way to determine the shadow rays, and I will implement a more efficient way to determine the shadow rays with any hit shaders in the future.
 
@@ -572,7 +572,7 @@ if (payload.is_shadow_ray == 1)
 }
 ```
 
-## Next Event Estimation
+### Next Event Estimation
 
 For next event estimation, we need to sample from the emissive meshes. While building the geometry data in the CPU code, I created the CDF for all the meshes, and passed this data in a ByteAddressBuffer to the GPU. In the closest hit shader, I used the CDF to sample from the emissive meshes, with every instance data has an offset to this CDF array.
 
@@ -620,7 +620,7 @@ if (i.is_emissive > 0) {
 
 This code worked well for meshes with small triangle counts, however for the meshes with slightly larger triangle counts (4000 triangles), the CDF sampling was so slow that it tanked the FPS values. When rendering these meshes I assumed equal area for each triangle, and calculated the index directly from a random value.
 
-## Splitting
+### Splitting
 
 Splitting is easy to implement, the important thing in the splitting is to make sure that every scatter direction from the intersection is different from each other.
 
@@ -632,7 +632,7 @@ for (int j = 0; j < splitting_factor; j++) {
 }
 ```
 
-## Russian Roulette
+### Russian Roulette
 
 The russian roulette is a technique to terminate the rays with a probability, this will help us to reduce the number of rays in the scene, which helped tremendously to increase the FPS values of the scene with 4x increase. I used the diffuse component of the material to determine the probability of the russian roulette, and passed a throughput value to accumulate the probabilities of the russian roulette.
 
@@ -650,7 +650,7 @@ The russian roulette is a technique to terminate the rays with a probability, th
 }
 ```
 
-# Miss Shaders
+## Miss Shaders
 
 Miss shader is a basic implementation in my case as I don't have any skybox or environment map, I just return a black color for the miss shader.
 
@@ -663,11 +663,11 @@ void MyMissShader(inout RayPayload payload)
 }
 ```
 
-# Future Optimizations for Real Time Rendering
+## Future Optimizations for Real Time Rendering
 
 The future of this project will include the optimization points with the DXR API, and the memory optimizations for the acceleration structures. After having a solid foundation for the ray tracing pipeline, I will try to implement more complex techniques for reducing the noise in the scene.
 
-# Results
+## Results
 
 <Figure caption="Final result of the ray tracer" className="figcenter fighighlight">
   ![Final result of the ray tracer](./assets/RayTracer_bcRQDA2kbY.jpg)
@@ -704,7 +704,7 @@ The future of this project will include the optimization points with the DXR API
 <VideoPlayer src="/videos/RayTracer_tourus.mp4" />
 
 
-# References
+## References
 
 Ahmet Oğuz Akyüz, Lecture Slides from CENG795 Advanced Ray Tracing, Middle East Technical University
 
