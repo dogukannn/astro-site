@@ -41,6 +41,7 @@ const projects = defineCollection({
       tags: z.array(z.string()),
       image: image(),
       link: z.string().url(),
+      draft: z.boolean().optional(),
       startDate: z.coerce.date().optional(),
       endDate: z.coerce.date().optional(),
     }),
