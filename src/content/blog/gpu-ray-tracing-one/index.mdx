@@ -1,9 +1,8 @@
 ---
 title: 'Monte Carlo Path Tracing With DXR - Introduction and Basic Optimization Techniques'
-description: Here we will implement monte carlo path tracing with DXR on the GPU.
+description: 'Here we will implement monte carlo path tracing with DXR on the GPU.'
 date: 2025-01-21
-image: ./assets/post_image.png
-tags: ['Ray Tracing']
+image: './assets/post_image.png'
 authors: ['dogukannn']
 ---
 
@@ -101,7 +100,7 @@ ThrowIfFailed(m_dxrDevice->CreateStateObject(raytracingPipeline, IID_PPV_ARGS(&m
 
 A note about the maximum recursion depth is that this value is the absolute maximum value that you can call the TraceRay() function, and the shaders won't stop the recursion for you at this depth, you need to handle this in your shaders. If you don't handle this, you will get a hanged GPU, which results in a device lost error.
 
-### Calculating Shader Offset For Each Intersected Object
+## Calculating Shader Offset For Each Intersected Object
 
 As you see we defined every shader that we will use in one pipeline and we will use this pipeline for every object in the scene. The reason behind it is that in ray tracing we won't issue any draw calls for the objects, we will just dispatch rays to the scene and every intersection needs to call the related shader. This calculation is handled by our application and we can define it from multiple locationn, geometry datas for bottom level acceleration structures, instance datas for top level acceleration structures, and as a parameter of the TraceRay() function.
 
@@ -113,9 +112,11 @@ hitGroupPointer = &hitGroups[0] + (hitGroupStride * (RayTypeOffset + RayTypeStri
 
 This calculation is done by the DXR API, and quite hard to figure out by yourself, after tackling every variable with a slight resemblance, I found a introduction to this topic in [a blog post by Will Usher](https://www.willusher.io/graphics/2019/11/20/the-sbt-three-ways/). The post explains this calculation in depth, and compares the ray tracing frameworks of DXR, OptiX and Vulkan.
 
+
 <Figure caption="Figure taken from Will Usher's blog, showing a shader binding table with two instances, the second instance having two different geometries with different values for shader indices">
-![shader binding table](./assets/sbt_offset.png)
+  ![Figure taken from Will Usher's blog, showing a shader binding table with two instances, the second instance having two different geometries with different values for shader indices](./assets/sbt_offset.png)
 </Figure>
+
 
 ## Creating Acceleration Structures
 
@@ -237,7 +238,7 @@ m_deviceResources->ExecuteCommandList();
 m_deviceResources->WaitForGpu();
 ```
 
-### Multi Mesh Bottom Level Structures
+## Multi Mesh Bottom Level Structures
 
 In the above code, I created a bottom level acceleration structure for each mesh in the scene, and a top level acceleration structure for each instance in the scene. This is a good starting point for a simple scene, but for a more complex scene, we can group multiple geometries in a single bottom level acceleration structure. This will reduce the memory cost of the acceleration structures, and the build time of the structures, and if we are sure that these meshes will near each other in the scene, we can reduce the number of intersection tests for the rays.
 
@@ -270,7 +271,7 @@ struct InstanceData
 ByteAddressBuffer InstanceDatas : register(t3, space0);
 ```
 
-### HLSL Buffer Alignment Issues With Arrays
+## HLSL Buffer Alignment Issues With Arrays
 
 For the scene data, I used constant buffers, and I encountered a problem with the alignment of the arrays in the constant buffer. I created a predefined maximum sized index array for the indices of the emissive meshes (this will help us to sample from them in the Next Event Estimation). However, when I run the code I noticed some errors with the indices.
 
@@ -306,7 +307,7 @@ As a solution I packed the uint's into uint4 for HLSL and accessed with offsets 
 #endif
 ```
 
-### Local and Global Root Arguments
+## Local and Global Root Arguments
 
 In the ray tracing pipeline, we can define two types of root arguments, local and global. Local root arguments are the data that will be passed to the shaders for each intersection, and global root arguments are the data that will be shared across the shaders. In this example I didn't use the local root arguments, but I used the global root arguments for the scene data and the instance data, defining the root arguments are the same process as without DXR, so I will skip this part.
 
@@ -518,7 +519,7 @@ void MyClosestHitShader(inout RayPayload payload, in MyAttributes attr)
 }
 ```
 
-### Importance Sampling
+## Importance Sampling
 
 To sample the directions of the rays, we can use importance sampling, which will help us to sample the directions of the rays with the probability of the directions. In the above code, I used the cosine weighted hemisphere sampling for the diffuse materials. 
 
@@ -554,7 +555,7 @@ float3 randomInHemisphere(float3 normal, float3 seed) {
 }
 ```
 
-### Shadow Ray Hack
+## Shadow Ray Hack
 
 For shadow rays, I used the color values and a uint value to determine a shadow ray in the RayPayload to determine the shadow rays. This is a hacky way to determine the shadow rays, and I will implement a more efficient way to determine the shadow rays with any hit shaders in the future.
 
@@ -572,7 +573,7 @@ if (payload.is_shadow_ray == 1)
 }
 ```
 
-### Next Event Estimation
+## Next Event Estimation
 
 For next event estimation, we need to sample from the emissive meshes. While building the geometry data in the CPU code, I created the CDF for all the meshes, and passed this data in a ByteAddressBuffer to the GPU. In the closest hit shader, I used the CDF to sample from the emissive meshes, with every instance data has an offset to this CDF array.
 
@@ -620,7 +621,7 @@ if (i.is_emissive > 0) {
 
 This code worked well for meshes with small triangle counts, however for the meshes with slightly larger triangle counts (4000 triangles), the CDF sampling was so slow that it tanked the FPS values. When rendering these meshes I assumed equal area for each triangle, and calculated the index directly from a random value.
 
-### Splitting
+## Splitting
 
 Splitting is easy to implement, the important thing in the splitting is to make sure that every scatter direction from the intersection is different from each other.
 
@@ -632,7 +633,7 @@ for (int j = 0; j < splitting_factor; j++) {
 }
 ```
 
-### Russian Roulette
+## Russian Roulette
 
 The russian roulette is a technique to terminate the rays with a probability, this will help us to reduce the number of rays in the scene, which helped tremendously to increase the FPS values of the scene with 4x increase. I used the diffuse component of the material to determine the probability of the russian roulette, and passed a throughput value to accumulate the probabilities of the russian roulette.
 
@@ -669,25 +670,35 @@ The future of this project will include the optimization points with the DXR API
 
 ## Results
 
-<Figure caption="Final result of the ray tracer" className="figcenter fighighlight">
+
+<Figure caption="Final result of the ray tracer">
   ![Final result of the ray tracer](./assets/RayTracer_bcRQDA2kbY.jpg)
 </Figure>
 
-<Figure className="figcenter fighighlight">
-  ![Screenshot 2025-01-19 171306](./assets/Screenshot%202025-01-19%20171306.png)
+
+
+<Figure caption="">
+  ![Figure](./assets/Screenshot 2025-01-19 171306.png)
 </Figure>
 
-<Figure className="figcenter fighighlight">
-  ![Screenshot 2025-01-20 022100](./assets/Screenshot%202025-01-20%20022100.png)
+
+
+<Figure caption="">
+  ![Figure](./assets/Screenshot 2025-01-20 022100.png)
 </Figure>
 
-<Figure className="figcenter fighighlight">
-  ![Screenshot 2025-01-20 022216](./assets/Screenshot%202025-01-20%20022216.png)
+
+
+<Figure caption="">
+  ![Figure](./assets/Screenshot 2025-01-20 022216.png)
 </Figure>
 
-<Figure caption="Buggy result from the initial try" className="figcenter fighighlight">
-  ![Buggy result from the initial try](./assets/Screenshot%202025-01-19%20163921.png)
+
+
+<Figure caption="Buggy result from the initial try">
+  ![Buggy result from the initial try](./assets/Screenshot 2025-01-19 163921.png)
 </Figure>
+
 
 ## Videos
 

@@ -1,0 +1,109 @@
+---
+title: 'Creating Reflections with OpenGL'
+description: 'Here we will glance into cubemaps and their use cases.'
+date: 2022-05-18
+image: './assets/post_image.png'
+authors: ['dogukannn']
+---
+
+import Figure from "@/components/Figure.astro";
+
+In this project we will see how can we create reflective surfaces on modern OpenGL without the help of raytracing. To do so we will use a technique called cube mapping to map the environment to a texture. We will also see some other cool-effects we can achieve with cubemaps.
+
+## Introduction to Cubemaps
+
+
+<Figure caption="">
+  ![Figure](./assets/cubemap.gif)
+</Figure>
+
+
+A cubemap is basically a texture pack with six square layers, each layer is the projection of our environment with 6 different angles. These angles are representing a cube when it is loaded in a 3D environment. 
+
+We can achieve same kind of environmental mapping with spheres, but it has problems such as distortion and computational inefficiency. 
+
+The cubemaps can be created beforehand to represent some backgrounds in computer graphics applications. However, they also can be created in real-time to map the virtual environment to a texture to create effects like reflections. 
+
+## Creating a Skybox
+
+We can use real life equirectangular projection (panorama) images to create cubemaps. To do so we create a special mapping which calculates the spherical coordinates of the pixels on the cubemap. Then we take these spherical coordinates then lookup the related pixels using a interpolation method in the equirectangular projection images.
+
+
+<Figure caption="">
+  ![Figure](./assets/hdr.png)
+</Figure>
+
+
+
+<Figure caption="">
+  ![Figure](./assets/tocubemap.png)
+</Figure>
+
+
+After that we can easily use this cubemap in our OpenGL programs to create skyboxes. Implementation is quite easy with the following steps.
+- First, we create a cube mesh around our camera and make sure that cube doesn't move or rotate when our camere moves. This will give the effect of a far landscape.
+- Then, we will make sure to render the cube with the cubemap texture which we loaded from a file using the 3D texture lookup functions in fragment shader. While rendering we should turn off the depth testing to make sure that the cubemap is always in the background.
+
+In the end we will have a lovely background of a scene which we can easily look around.
+
+
+<Figure caption="">
+  ![Figure](./assets/cubemaprotate.gif)
+</Figure>
+
+
+
+## Dynamic Cubemaps for Reflections
+
+The skyboxes are lovely, but how about reflections? The idea is simple, we just need to see the environment from the object's eyes. After that, we can easily look up and find the reflection to calculate the color on the surface of a object. To achieve real-time reflections we need a cubemap which is updated in each frame because there might be objects moving in our scene. 
+
+This can be done using basic OpenGL functionalities. First we need to create a framebuffer, they are usefull for rendering off-screen just like in our case. Then, we set our camera's position into the objects position whose surface is reflective. After that it is simple, we render 6 times with 90 degrees viewing angle in each direction for our cube's faces and move these into our cubemap texture. While doing this we need to make sure that our reflective object is not in the scene to get the result without the inside of our object.
+
+
+<Figure caption="">
+  ![Figure](./assets/camcube.png)
+</Figure>
+
+
+All there is left to do is sampling from the cubemap texture in our fragment shader of our object with a function called "reflect" which calculates the reflection of the direction between our camera and our point with a given surface normal.
+
+
+<Figure caption="">
+  ![Figure](./assets/reflect.jpg)
+</Figure>
+
+
+
+<Figure caption="A scene with a reflective teapot and orbiting objects. We can see that the reflections are crystal clear.">
+  ![A scene with a reflective teapot and orbiting objects. We can see that the reflections are crystal clear.](./assets/reflection1.gif)
+</Figure>
+
+
+We can also use "refraction" function in glsl to mimic refractive surfaces as well.
+
+
+<Figure caption="An example of a refractive cube.">
+  ![An example of a refractive cube.](./assets/refraction.png)
+</Figure>
+
+
+## Different Applications
+
+The cubemaps can be used in many different applications, while I was working on the LGSVL simulator, a autonomous car simulation environment, when they need to simulate rays originating from a point, in that case it was a LiDAR sensor, the efficient option is to using a depth-cubemap. With the depth-cubemap you can easily calculate the intersection points of the rays coming from a point in the space using the depth values and the ray equations.
+
+
+<Figure caption="LiDAR sensor points on the simulation environment.">
+  ![LiDAR sensor points on the simulation environment.](./assets/lgsvl.png)
+</Figure>
+
+
+
+<Figure caption="An example of a depth-cubemap.">
+  ![An example of a depth-cubemap.](./assets/depth.png)
+</Figure>
+
+
+
+## Final Thoughts
+
+Using cubemaps to calculate reflections on the objects is an easy way to achieve such a cool effect. However, while rendering in the real time rendering 6 more times for each reflective object is not very efficient in performance wise. If we can give up the reflections of the moving objects, we can easily calculate the cubemaps for each reflective object once for each scene. To optimize further we can choose some locations to calculate environmental cubemaps and then each reflective object can use the closest calculated cubemap to show reflections.
