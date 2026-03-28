@@ -7,6 +7,7 @@ authors: ['dogukannn']
 ---
 
 import Figure from "@/components/Figure.astro";
+import Gif from "@/components/Gif.astro";
 
 In this project, the aim is to create a surface from scratch with bezier curve equations. This will allow us to create animations simply by changing the control points of the surface we want to create. I will do the computations on the CPU and then send the mesh to the GPU with a texture, so this process is not optimal by any means. I used OpenGL 4.6 to implement the project.
 
@@ -138,11 +139,7 @@ Finally, we have a flag that animates smoothly. However, to find the best angle 
 
 
 <Figure caption="Rotating our surface with mouse.">
-  <img
-    src={`${import.meta.env.BASE_URL}/static/rotation.gif`}
-    alt="Rotating our surface with mouse."
-    loading="lazy"
-  />
+  <Gif src="/static/rotation.gif" alt="Rotating our surface with mouse." />
 </Figure>
 
 

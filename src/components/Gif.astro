@@ -1,0 +1,29 @@
+---
+// A tiny helper for base-aware GIF (or any public asset) URLs.
+// Usage: <Gif src="/static/rotation.gif" alt="..." />
+const {
+  src,
+  alt = '',
+  loading = 'lazy',
+  decoding = 'async',
+  class: className = '',
+} = Astro.props
+
+if (!src || typeof src !== 'string') {
+  throw new Error('`src` is required for <Gif /> and must be a string.')
+}
+
+// Build a public URL that respects `base` (e.g. `/astro-site`).
+// Prefer absolute paths like `/static/rotation.gif`.
+const base = (import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
+const normalizedSrc = src.startsWith('/') ? src : `/${src}`
+const resolvedSrc = `${base}${normalizedSrc}`
+---
+
+<img
+  src={resolvedSrc}
+  alt={alt}
+  loading={loading}
+  decoding={decoding}
+  class={className}
+/>
