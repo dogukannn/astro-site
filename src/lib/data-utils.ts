@@ -1,5 +1,6 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content'
 import { readingTime, calculateWordCountFromHtml } from '@/lib/utils'
+import { isHiddenTemplatePost } from '@/lib/hidden-template-posts'
 
 export async function getAllAuthors(): Promise<CollectionEntry<'authors'>[]> {
   return await getCollection('authors')
@@ -9,6 +10,7 @@ export async function getAllPosts(): Promise<CollectionEntry<'blog'>[]> {
   const posts = await getCollection('blog')
   return posts
     .filter((post) => !post.data.draft && !isSubpost(post.id))
+    .filter((post) => !isHiddenTemplatePost(post))
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
 }
 
@@ -18,6 +20,7 @@ export async function getAllPostsAndSubposts(): Promise<
   const posts = await getCollection('blog')
   return posts
     .filter((post) => !post.data.draft)
+    .filter((post) => !isHiddenTemplatePost(post))
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
 }
 
